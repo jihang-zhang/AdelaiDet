@@ -11,8 +11,25 @@ from .mobilenet import build_mnv2_backbone
 __all__ = []
 
 
-def swish(x):
-    return x * x.sigmoid()
+class SwishImplementation(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        ctx.save_for_backward(x)
+        return x * torch.sigmoid(x)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        x = ctx.saved_tensors[0]
+        sx = torch.sigmoid(x)
+        return grad_output * (sx * (1 + x * (1 - sx)))
+
+
+class MemoryEfficientSwish(nn.Module):
+    @staticmethod
+    def forward(x):
+        return SwishImplementation.apply(x)
+
+swish = MemoryEfficientSwish()
 
 
 def split_name(name):
