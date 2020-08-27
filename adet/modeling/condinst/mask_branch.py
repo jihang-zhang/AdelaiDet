@@ -103,10 +103,13 @@ class MaskBranch(nn.Module):
                 areas = areas[:, None, None].repeat(1, h, w)
                 areas[per_im_gt.gt_bitmasks_full == 0] = INF
                 areas = areas.permute(1, 2, 0).reshape(h * w, -1)
-                min_areas, inds = areas.min(dim=1)
-                per_im_sematic_targets = per_im_gt.gt_classes[inds] + 1
-                per_im_sematic_targets[min_areas == INF] = 0
-                per_im_sematic_targets = per_im_sematic_targets.reshape(h, w)
+                try:
+                    min_areas, inds = areas.min(dim=1)
+                    per_im_sematic_targets = per_im_gt.gt_classes[inds] + 1
+                    per_im_sematic_targets[min_areas == INF] = 0
+                    per_im_sematic_targets = per_im_sematic_targets.reshape(h, w)
+                except RuntimeError: # This is ugly - try to capture the error in data loader
+                    per_im_sematic_targets = torch.zeros((h, w), dtype=per_im_gt.gt_classes.dtype, device=per_im_gt.gt_classes.device)
                 semantic_targets.append(per_im_sematic_targets)
 
             semantic_targets = torch.stack(semantic_targets, dim=0)
